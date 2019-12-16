@@ -12,7 +12,7 @@ for indicating an absent value (i.e., a gap) in a CBOR Array::
   Data item: Undefined (0xf7)
   Semantics: Absent value in a CBOR Array
   Point of contact: Sami Vaarala <sami.vaarala@iki.fi>
-  Description of semantics: https://github.com/svaarala/duktape/blob/master/doc/cbor-absent-tag.rst
+  Description of semantics: https://github.com/svaarala/cbor-specs/blob/master/cbor-absent-tag.rst
 
 The application of this tag to a tag content other than CBOR Undefined is left
 for further study.
