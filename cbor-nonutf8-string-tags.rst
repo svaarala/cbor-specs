@@ -50,6 +50,11 @@ This means that an encoder may need to UTF-8 validate an input string during
 encoding.  The semantics of decoding a valid UTF-8 string encoded as a tagged
 byte string is up to the decoder.
 
+There is some overlap between the different UTF-8 variants.  In particular,
+a certain byte string may decode to the same codepoint sequence in more than
+one variant.  An encoder may choose any compatible tag in such cases, see
+more discussion below.
+
 Example
 =======
 
@@ -59,9 +64,9 @@ not a viable CBOR text string::
   var str = 'foo\ud800';
 
 It can be encoded as a CBOR byte string with CESU-8 encoding, and the tag
-XXX applied::
+272 (0x110) applied::
 
-  d9 XX XX
+  d9 01 10
     46 66 6f 6f ed a0 80
 
 If the decoding entity supports the tag, it can recover the original ECMAScript
@@ -123,7 +128,7 @@ This is workable but has two major downsides:
 
 The tags specified in this document allow a better encoding::
 
-  d9 XX XX
+  d9 01 10
     46 66 6f 6f ed a0 80
 
 This is much better than when using tag 27 (generic-object):
@@ -148,6 +153,94 @@ This has two major benefits:
 The downside of this requirement is that an encoder may need to check
 the UTF-8 validity of an input string before deciding on the appropriate
 encoding, which has a minor performance impact.
+
+Overlap between UTF-8 variants
+==============================
+
+There is some overlap between the UTF-8 variants; for example:
+
+* All CESU-8 strings containing no valid paired surrogates are valid WTF-8,
+  and have the same meaning.
+
+* All WTF-8 strings containing no non-BMP codepoints (> U+FFFF) are valid CESU-8,
+  and have the same meaning.
+
+* All CESU-8 strings containing no NUL (0x00) are valid MUTF-8 and vice versa,
+  and have the same meaning.
+
+* All WTF-8 strings containing no NUL (0x00) or non-BMP codepoints (> U+FFFF)
+  are valid CESU-8, WTF-8, and MUTF-8, and have the same meaning.
+
+* A WTF-8 string containing a non-BMP codepoint (> U+FFFF) is invalid CESU-8
+  and MUTF-8.
+
+* A MUTF-8 string containing a NUL (0xc0 0x80) is invalid CESU-8 and WTF-8.
+
+The table below provides some examples of the overlap, providing the decoded
+codepoint sequence for each variant:
+
++----------------------------+----------------+----------------+----------------+
+| Byte sequence              | CESU-8         | WTF-8          | MUTF-8         |
++============================+================+================+================+
+| 66 6f 6f ed a0 80          | 66 6f 6f d800  | 66 6f 6f d800  | 66 6f 6f d800  |
++----------------------------+----------------+----------------+----------------+
+| 66 6f 00 ed a0 80          | 66 6f 00 d800  | 66 6f 00 d800  | invalid        |
+|                            |                |                | (one-byte NUL) |
++----------------------------+----------------+----------------+----------------+
+| ed a0 bd ed b2 ac          | d83d dcac      | invalid        | d83d dcac      |
+|                            |                | (paired)       |                |
++----------------------------+----------------+----------------+----------------+
+| ed a0 bd ed b2 ac 00       | d83d dcac 00   | invalid        | invalid        |
+|                            |                | (paired)       | (one-byte NUL) |
++----------------------------+----------------+----------------+----------------+
+| f0 9f 92 ac                | invalid        | 1f4a9          | invalid        |
+|                            | (non-BMP)      |                | (non-BMP)      |
++----------------------------+----------------+----------------+----------------+
+| 66 6f 6f c0 80             | invalid        | invalid        | 66 6f 6f 00    |
+|                            | (two-byte NUL) | (two-byte NUL) |                |
++----------------------------+----------------+----------------+----------------+
+| ff                         | invalid        | invalid        | invalid        |
++----------------------------+----------------+----------------+----------------+
+
+When a certain byte string is valid in two or more encodings (and has the same
+meaning when decoded), the encoder may use any applicable tag defined in this
+document when encoding the string.
+
+The decoder, assuming it supports all the variant tags (which is not required),
+should arrive at the same decoded value regardless of which tag was chosen.
+The tag used should not affect the decoded result value, i.e. the codepoint
+sequence.  For example, these two tagged byte strings (tagged CESU-8 and
+WTF-8, respectively) should have the same decoded value and be treated
+identically::
+
+  d9 01 10
+    46 66 6f 6f ed a0 80
+
+  d9 01 11
+    46 66 6f 6f ed a0 80
+
+Suppose A is sending CBOR data to B, and that both use CESU-8 internally for strings.
+This is one valid approach for encoding in A:
+
+* If an input string is valid UTF-8, encode as standard CBOR UTF-8 text string.
+
+* Else, if an input is valid CESU-8, encode as a CBOR byte string with tag 272 (CESU-8).
+
+* Else, encode as a plain CBOR byte string (should not happen if inputs are CESU-8).
+
+However, this is also a valid approach:
+
+* If an input string is valid UTF-8, encode as standard CBOR UTF-8 text string.
+
+* Else, if an input is valid WTF-8, encode as a CBOR byte string with tag 273
+  (WTF-8).
+
+* Else, if an input is valid CESU-8 (but invalid WTF-8), encode as a CBOR byte
+  string with tag 272 (CESU-8).
+
+* Else, encode as a plain CBOR byte string (should not happen if inputs are CESU-8).
+
+In both cases B would arrive at the same string result value.
 
 References
 ==========
