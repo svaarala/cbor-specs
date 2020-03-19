@@ -8,19 +8,19 @@ Overview
 This document specifies CBOR [1] tags applied to a CBOR byte string
 representing non-UTF-8 text in a variant of UTF-8::
 
-  Tag: TBD
+  Tag: 272
   Data item: byte string
   Semantics: Non-UTF-8 CESU-8 string
   Point of contact: Sami Vaarala <sami.vaarala@iki.fi>
   Description of semantics: https://github.com/svaarala/cbor-specs/blob/master/cbor-nonutf8-string-tags.rst
 
-  Tag: TBD
+  Tag: 273
   Data item: byte string
   Semantics: Non-UTF-8 WTF-8 string
   Point of contact: Sami Vaarala <sami.vaarala@iki.fi>
   Description of semantics: https://github.com/svaarala/cbor-specs/blob/master/cbor-nonutf8-string-tags.rst
 
-  Tag: TBD
+  Tag: 274
   Data item: byte string
   Semantics: Non-UTF-8 MUTF-8 string
   Point of contact: Sami Vaarala <sami.vaarala@iki.fi>
